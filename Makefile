@@ -1,0 +1,2 @@
+game:
+	./dicebot.pl

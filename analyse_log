@@ -1,0 +1,32 @@
+#!/usr/bin/perl
+use strict;
+use Data::Dumper;
+
+my $file = shift | 'DEF.WIN.log';
+open my $LOG, '<', $file
+    or die "Failed to open '$file': $!";
+my $c = {};
+my @unwanted_patterns = (qr/^Julius.*Julius/);
+my @wanted_patterns   = (qr/^Julius/);
+
+foreach my $line (<$LOG>){
+    $c->{'lines'}++;
+    next if     grep {$line =~ m/$_/} @unwanted_patterns;
+    next unless grep {$line =~ m/$_/} @wanted_patterns;
+    $c->{'wanted'}++;
+    my ($bot, $result, undef) = split / /, $line, 3;
+    $c->{'game'}->{$bot}->{$result}++;
+    
+    ##  print Dumper \@tokens;
+    ##  print $line;
+}
+foreach my $bot (keys %{$c->{'game'}}){
+    print $_, "\n";
+    $c->{'game'}->{$bot}->{'rate'} = $c->{'game'}->{$bot}->{'WIN'} /
+                                     ( $c->{'game'}->{$bot}->{'DEF'} + $c->{'game'}->{$bot}->{'WIN'} ) * 100;
+}
+print Dumper $c;
+
+
+
+__END__
