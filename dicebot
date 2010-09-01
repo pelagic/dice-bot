@@ -1,6 +1,7 @@
 #!/usr/bin/perl 
 
 use strict;
+use warnings FATAL => 'all';
 use Getopt::Long;
 use IO::Socket;
 use Data::Dumper;
@@ -9,18 +10,20 @@ use Alea;
 
 our $VERSION = '1.002';
 
-my $my_id    = shift || "julius";
-my $strategy = shift || 'Primitive';
+my $my_id    = 'julius';
+my $strategy = 'Primitive';
 
 
-my ($p_help, $p_version);
+my ($help, $version);
 my $DEBUG     = 0;
 
 GetOptions
-('debug=s'     => \$DEBUG
-,'help'	       => \$p_help
-,'version'     => \$p_version
-) or die "Illegal option entered.\n$usage";
+('id=s'        => \$my_id
+,'strategy=s'  => \$strategy
+,'debug'       => \$DEBUG
+,'help'	       => \$help
+,'version'     => \$version
+) or die "Illegal option entered.";
 
 __END__
 

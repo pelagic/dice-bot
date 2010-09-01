@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Data::Dumper;
 use Alea;
 
-my $play = [q/r/];
+my $play = [q/R/];
 print "\n* * *  results: ", Dumper $play;
 $play = Alea::iterate($play, 1);
 print "\n* * *  results: ", Dumper $play;
