@@ -3,6 +3,17 @@ use warnings FATAL => 'all';
 use Data::Dumper;
 use Alea;
 
+my $play = [q/r/];
+print "\n* * *  results: ", Dumper $play;
+$play = Alea::iterate($play, 1);
+print "\n* * *  results: ", Dumper $play;
+$play = Alea::iterate($play, 1);
+print "\n* * *  results: ", Dumper $play;
+$play = Alea::iterate($play, 1);
+print "\n* * *  results: ", Dumper $play;
+
+__END__
+
 printf "%2s  %2s  %2s  %2s\n", qw/SV TL RI EX/;
 
 print "\nAlea(Simple):\n";

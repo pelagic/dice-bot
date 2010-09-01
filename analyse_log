@@ -7,7 +7,7 @@ open my $LOG, '<', $file
     or die "Failed to open '$file': $!";
 my $c = {};
 my @unwanted_patterns = (qr/^Julius.*Julius/);
-my @wanted_patterns   = (qr/^Julius/);
+my @wanted_patterns   = (qr/^Julius.*(?:DEF|WIN)/);
 
 foreach my $line (<$LOG>){
     $c->{'lines'}++;

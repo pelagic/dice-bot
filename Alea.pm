@@ -16,11 +16,11 @@ throwing a dice.
     my $S = Alea->new(Simple);
     my $P = Alea->new(Px, limit => 17);
 
-    ##	get dice action {ROLL|SAVE} for current state of saved
+    ##  get dice action {ROLL|SAVE} for current state of saved
     ##  and total points using strategy named 'Simple'
     my $decision = $S->decide($saved, $total);
 
-    ##	get dice action {ROLL|SAVE} for current state of saved
+    ##  get dice action {ROLL|SAVE} for current state of saved
     ##  and total points using strategy named 'Px'
     $decision = $P->decide($saved, $total);
 
@@ -59,6 +59,24 @@ sub new {
     }
 
     return bless $self, $strategy;
+}
+
+sub iterate {
+    my $history = shift;
+    my $rounds  = shift;
+    my $follower = {
+        R => [qw/R S r/],
+        S => [qw/r/],
+        r => [qw/r s R/],
+        s => [qw/R/],
+    };
+    my @results;
+    foreach my $state (@$history) {
+        die "contains invalid letter(s): '$state'." if $state =~ m/[^rs]/i;
+        my $last = substr $state, -1;
+        push @results, map {$state . $_} @{$follower->{$last}};
+    }
+    return \@results;
 }
 
 #-------------------------------------------------------------------------------

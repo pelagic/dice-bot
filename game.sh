@@ -6,7 +6,7 @@ function do_usage
    echo ""
 }
 
-CMD="./dicebot.pl"
+CMD="./dicebot"
 WINS=0
 LOST=0
 ERR=0
