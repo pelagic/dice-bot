@@ -32,12 +32,12 @@ Help not implemented yet
 $sep/;
 
 my $my_id    = 'julius';
-my $strategy = 'Primitive,-limit,15';
+my $strategy = 'Px,limit,15';
 
 
 my ($p_help, $p_version);
-my $DEBUG = 0;
-my $TRACE = 0;
+my $DEBUG = 1;
+my $TRACE = 1;
 
 GetOptions
 ('id=s'        => \$my_id
@@ -86,7 +86,6 @@ my $b_line;
 my $n_recv;
 my $b_recv;
 my $ii = 0;
-my $debug = 1;
 my $line_complete;
 my $cont = 1;
 
@@ -125,10 +124,8 @@ while($cont) {
       $line_complete = 1;
    }
    
-   $b_line = "$b_line" . $b_recv;
-   if ($debug) {
-      print "DEBUG: recv() rc=$n_recv text=$b_recv line=$b_line\n";
-   }
+   $b_line .= $b_recv;
+    print "DEBUG: recv() rc=$n_recv text=$b_recv line=$b_line\n" if $DEBUG;
 
    if (!$line_complete) {
       $ii++;  
@@ -140,21 +137,17 @@ while($cont) {
    my @input = split(/\n/, $b_line);
    my $input;
    foreach $input (@input) {
-      if ($debug) {
-         print "DEBUG: got new line to process: $input\n";
-      }
+        print "DEBUG: got new line to process: $input\n" if $DEBUG;
    
-      $cont = process_line($input, $sock, $debug);
+      $cont = process_line($input, $sock);
    
-      if ($debug) {
-         print "DEBUG: process_line() rc=$cont ii=$ii\n";
-      }
+        print "DEBUG: process_line() rc=$cont ii=$ii\n" if $DEBUG;
       if (!$cont) {
          last;
       }
    }   
 
-   $b_line = "";
+   undef $b_line;
    $ii++;
    
    if (!$cont) {
@@ -221,10 +214,10 @@ sub process_line {
       }
       $my_turn = 1;
       ($my_total, $peer_total) = get_numbers($line);
-      print "TRACE: my_total=$my_total\n";
+      print "TRACE: my_total=$my_total\n" if $TRACE;
       my $decision = $D->decide($saved, $my_total, $peer_total);
       if ($decision eq 'SAVE') {
-         print "TRACE: send SAVE\n";
+         print "TRACE: send SAVE\n" if $TRACE;
          send_save($sock);
       }
       elsif ($decision eq 'ROLL') {

@@ -45,7 +45,7 @@ fi
 
 while true; 
 do
-   $CMD $ID $STRA $PARM
+   $CMD --id $ID --strategy $STRA $PARM
    RC=$?
    
    if [ $RC -eq 0 ]; then
