@@ -6,7 +6,7 @@ use Data::Dumper;
 
 use Alea;
 
-my $my_id = shift || "julius";
+my $my_id    = shift || "julius";
 my $strategy = shift || 'Primitive';
 print "TRACE: playing as '$my_id' using '$strategy' with argument '@ARGV'\n";
 
@@ -21,36 +21,19 @@ my $saved = 0;
 my $my_turns = 0;
 my $peer_turns = 0;
 my $whos_turn;
-
-sub print_random {
-   my %hrand = ();
-   my $nrand = 10;
-   $hrand{1} = 0;
-   $hrand{2} = 0;
-   $hrand{3} = 0;
-   $hrand{4} = 0;
-   $hrand{5} = 0;
-   $hrand{6} = 0;
-   for (my $ii=0; $ii < $nrand; $ii++) {
-      my $rand = int(rand 6) + 1;
-      my $n = $rand;
-      $hrand{$n} = $hrand{$n} + 1;
-   #   print "$n\n";
-   }
-   my $sum = 0;
-   foreach my $num (keys(%hrand)) {
-      $sum += $hrand{$num};
-      print "$num : $hrand{$num}\n";
-   }
-   print "sum=$sum\n";
-   exit(2);
-}
+my $starter;
 
 sub get_numbers {
-   my ($line) = @_;
-   my @tokens = split(/ /, $line, 4);
-   shift @tokens;
-   return @tokens;
+    my ($line) = @_;
+##  THRW 4 hat Spieler 2 (leinad-17) gewuerfelt
+##  THRW 2 hat Spieler 1 (downa13e) gewuerfelt
+    my ($throw, $order, $peer)
+        = $line =~ m/^THRW (\d) hat Spieler (\d) [(]([^)]+)[)] gewuerfelt/;
+    return ($throw, $order, $peer) if $throw;
+
+    my @tokens = split(/ /, $line, 4);
+    shift @tokens;
+    return @tokens;
 }
 
 sub send_auth {
@@ -111,7 +94,8 @@ sub process_line {
    elsif ($line =~ /^DEF/) {
       ($n_mine, $n_his) = get_numbers($line);
       print "$line\n";
-      warn "$my_id $line\n";
+      warn "$my_id $starter $line\n";
+      undef $starter;
       print "shit, we lost: your $n_mine peer $n_his\n";
       $continue = 0;
       $prog_exit = 1;
@@ -119,15 +103,24 @@ sub process_line {
    elsif ($line =~ /^WIN/) {
       ($n_mine, $n_his) = get_numbers($line);
       print "$line\n";
-      warn "$my_id $line\n";
+      warn "$my_id $starter $line\n";
+      undef $starter;
       print "success, we did it again: your $n_mine peer $n_his\n";
       $continue = 0;
       $prog_exit = 0;
    }
    elsif ($line =~ /^THRW/) {
-      my $dummy;
-      my $number;
-      ($number, $dummy) = get_numbers($line);
+      warn "$my_id $line\n";
+      my ($number, $order, $peer) = get_numbers($line);
+      if (not defined $starter) {
+         if (($order == 1 & $peer eq $my_id)
+          or ($order == 2 & $peer ne $my_id)) {
+            $starter = 'me';
+          }
+          else {
+            $starter = 'peer';
+          }
+      }
       if ($my_turn) {
          $my_total += $number;
          $my_total = $saved if $number == 6;

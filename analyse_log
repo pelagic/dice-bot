@@ -7,23 +7,28 @@ open my $LOG, '<', $file
     or die "Failed to open '$file': $!";
 my $c = {};
 my @unwanted_patterns = (qr/^Julius.*Julius/);
-my @wanted_patterns   = (qr/^Julius.*(?:DEF|WIN)/);
+##  my @wanted_patterns   = (qr/^Julius.*(?:DEF|WIN)/);
+my @wanted_patterns   = (qr/^Julius\d+ (?:me|peer) (?:DEF|WIN)/);
 
 foreach my $line (<$LOG>){
     $c->{'lines'}++;
     next if     grep {$line =~ m/$_/} @unwanted_patterns;
     next unless grep {$line =~ m/$_/} @wanted_patterns;
     $c->{'wanted'}++;
-    my ($bot, $result, undef) = split / /, $line, 3;
-    $c->{'game'}->{$bot}->{$result}++;
+    my ($bot, $starter, $result, undef) = split / /, $line, 4;
+    $c->{'game'}->{$bot}->{$starter . ':' . $result}++;
     
     ##  print Dumper \@tokens;
     ##  print $line;
 }
 foreach my $bot (keys %{$c->{'game'}}){
     print $_, "\n";
-    $c->{'game'}->{$bot}->{'rate'} = $c->{'game'}->{$bot}->{'WIN'} /
-                                     ( $c->{'game'}->{$bot}->{'DEF'} + $c->{'game'}->{$bot}->{'WIN'} ) * 100;
+    $c->{'game'}->{$bot}->{'me:rate'} =
+        $c->{'game'}->{$bot}->{'me:WIN'} /
+        ( $c->{'game'}->{$bot}->{'me:DEF'} + $c->{'game'}->{$bot}->{'me:WIN'} ) * 100;
+    $c->{'game'}->{$bot}->{'peer:rate'} =
+        $c->{'game'}->{$bot}->{'peer:WIN'} /
+        ( $c->{'game'}->{$bot}->{'peer:DEF'} + $c->{'game'}->{$bot}->{'peer:WIN'} ) * 100;
 }
 print Dumper $c;
 
