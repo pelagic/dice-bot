@@ -36,7 +36,7 @@ my $strategy = 'Px,limit,15';
 
 
 my ($p_help, $p_version);
-my $DEBUG = 1;
+my $DEBUG = 0;
 my $TRACE = 1;
 
 GetOptions
@@ -74,7 +74,6 @@ my $peer_total = 0;
 my $prog_exit = 2;
 my $saved = 0;
 
-my $whos_turn;
 my $starter;
 
 #-------------------------------------------------------------------------------
@@ -209,9 +208,6 @@ sub process_line {
       $continue = 0;
    }
    elsif ($line =~ /^TURN/) {
-      if ($whos_turn ne 'me') {
-          $whos_turn = 'me';
-      }
       $my_turn = 1;
       ($my_total, $peer_total) = get_numbers($line);
       print "TRACE: my_total=$my_total\n" if $TRACE;
@@ -242,35 +238,37 @@ sub process_line {
       $continue = 0;
       $prog_exit = 0;
    }
-   elsif ($line =~ /^THRW/) {
-      warn "$my_id $line\n";
-      my ($number, $order, $player) = get_numbers($line);
-      if (not defined $starter) {
-         if (($order == 1 && $player eq $my_id)
-          or ($order == 2 && $player ne $my_id)) {
-            $starter = 'me';
-          }
-          else {
-            $starter = 'peer';
-          }
-      }
-      if ($my_turn) {
-         $my_total += $number;
-         $my_total = $saved if $number == 6;
-         print "my thrw $number new total $my_total\n";
-      }
-      else {
-         $peer_total += $number;
-         print "peer thrw $number new total $peer_total\n";
-      }
-      $my_turn = 0;
-   }
-   else {
-      print "ERROR: unknown command received: $line\n";
-      $continue = 0;
-   }
+    elsif ($line =~ /^THRW/) {
+        warn "$my_id $line\n";
+        my ($number, $order, $player) = get_numbers($line);
+        if (not defined $starter) {
+            if (($order == 1 && $player eq $my_id)
+             or ($order == 2 && $player ne $my_id)) {
+                $starter = 'me';
+                print "TRACE: Starter is me\n" if $TRACE;
+            }
+            else {
+                $starter = 'peer';
+                print "TRACE: Starter is peer\n" if $TRACE;
+            }
+        }
+        if ($my_turn) {
+            $my_total += $number;
+            $my_total = $saved if $number == 6;
+            print "my thrw $number new total $my_total\n";
+        }
+        else {
+            $peer_total += $number;
+            print "peer thrw $number new total $peer_total\n";
+        }
+        $my_turn = 0;
+    }
+    else {
+        print "ERROR: unknown command received: $line\n";
+        $continue = 0;
+    }
    
-   return $continue;
+    return $continue;
 }
 
 #-------------------------------------------------------------------------------

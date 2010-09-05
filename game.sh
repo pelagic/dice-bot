@@ -2,19 +2,36 @@
 
 function do_usage
 {
-   echo "usage: [--help][--games <num_of>][--id <player>][--stra <strategy>]"
+   echo "usage: [--help][--games <num_of>][--id <player>][--strategy <name>]"
+   echo "       [debug]"
+   echo ""
+   echo "       --debug        activate debug"
+   echo "       --games        stops after <num_of> games (err are ignored)"
+   echo "       --help         this text"
+   echo "       --id           send <player> as name of this bot"
+   echo "       --strategy     uses the strategy <name> for this game"
+   echo "                      --strategy Primitive"
+   echo "                      --strategy Px,17      (limit=17)"
    echo ""
 }
 
 CMD="./dicebot"
+#CMD="./dicebot.pl"
+#CMD="echo SIM_MODE"
 WINS=0
 LOST=0
 ERR=0
 GAMES_LEFT=0
-MAX_GAMES=0
+MAX_GAMES=1
+ID="julius"
+STRATEGY="Primitive"
+DEBUG=0
 
 while [ "$1" != "" ]; do
    case $1 in
+      --debug)
+         DEBUG=1
+	 ;;
       --help)
          do_usage
 	 exit 0
@@ -27,25 +44,33 @@ while [ "$1" != "" ]; do
          shift
 	 ID=$1
 	 ;;
-      --stra)
+      --strategy)
          shift
-	 STRA=$1
+	 STRATEGY=$1
 	 ;;
       *)
 	 PARM=$1
-     echo found $PARM
+         echo "unknown ARG passed: $PARM"
+	 exit 1
 	 ;;
    esac
    shift
 done
 
-if [ $MAX_GAMES -lt 0 ]; then
-   MAX_GAMES=0
+if [ $MAX_GAMES -lt 1 ]; then
+   MAX_GAMES=1
+fi
+
+## concatenate option string
+##
+OPT="--id $ID --strategy $STRATEGY"
+if [ $DEBUG -gt 0 ]; then
+   OPT="$OPT --debug"
 fi
 
 while true; 
 do
-   $CMD --id $ID --strategy $STRA $PARM
+   $CMD $OPT
    RC=$?
    
    if [ $RC -eq 0 ]; then

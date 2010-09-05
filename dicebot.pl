@@ -6,11 +6,11 @@ use Data::Dumper;
 
 use Alea;
 
-my $my_id    = shift || "julius";
-my $strategy = shift || 'Primitive';
-print "TRACE: playing as '$my_id' using '$strategy' with argument '@ARGV'\n";
+# my $my_id    = shift || "julius";
+# my $strategy = shift || 'Primitive';
+# print "TRACE: playing as '$my_id' using '$strategy' with argument '@ARGV'\n";
 
-my $D = Alea->new($strategy, @ARGV);
+my $D;
 
 my $my_turn = 0;
 my $my_total = 0;
@@ -20,8 +20,9 @@ my $saved = 0;
 
 my $my_turns = 0;
 my $peer_turns = 0;
-my $whos_turn;
+my $whos_turn = "peer";
 my $starter;
+my $my_id;
 
 sub get_numbers {
     my ($line) = @_;
@@ -154,10 +155,14 @@ sub parse_args {
 		elsif ($ARGV[$ii] eq "--help") {
 			$$h_ref_args{help} = 1;
 		}
-#		elsif ($ARGV[$ii] eq "--uid") {
-#			$ii++;
-#			$$h_ref_args{uid} = $ARGV[$ii];
-#		}
+		elsif ($ARGV[$ii] eq "--id") {
+			$ii++;
+			$$h_ref_args{id} = $ARGV[$ii];
+		}
+		elsif ($ARGV[$ii] eq "--strategy") {
+			$ii++;
+			$$h_ref_args{strategy} = $ARGV[$ii];
+		}
 	}
 }
 
@@ -182,7 +187,7 @@ my $b_line;
 my $n_recv;
 my $b_recv;
 my $ii = 0;
-my $debug = 1;
+my $debug = 0;
 my $line_complete;
 my $cont = 1;
 my %h_args;
@@ -198,6 +203,15 @@ if ($h_args{help}) {
    do_usage(); 
    exit(0);
 }
+
+$my_id = $h_args{id};
+my $strategy = $h_args{strategy};
+
+if ($debug) {
+   print "DEBUG: playing as '$my_id' using '$strategy'\n";
+}
+
+$D = Alea->new($strategy, @ARGV);
 
 my $sock = new IO::Socket::INET (PeerAddr => $dest_server,
                                  PeerPort => $dest_port,
