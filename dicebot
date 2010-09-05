@@ -31,7 +31,7 @@ Help not implemented yet
 
 $sep/;
 
-my $my_id    = 'julius';
+my $my_id    = 'Julius';
 my $strategy = 'Px,limit,15';
 
 
