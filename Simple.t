@@ -10,39 +10,50 @@ use Data::Dumper;$Data::Dumper::Indent = 1;
 sub SCALAR () { 0 }
 sub LIST () { 1 }
 
+my $form0 =
+    "                         self: %2d  %2d  peer: %2d  %2d  delta: %+2d\n";
+my $forml =
+    "%-20s  %1s  self: %2d  %2d  peer: %2d  %2d  delta: %+3.1d  prob: %7.f ppm\n";
+my $forms =
+    "%-20s  %1s  self: %2d  %2d  peer: %2d  %2d  xpdelta: %+.3f\n";
+
 ## state => [saved, total]
-my $me = {state => [0, 0]};
-my $pr = {state => [0, 0]};
+my $me = {state => [25, 48]};
+my $pr = {state => [25, 25]};
 
 bless $me, __PACKAGE__;
 bless $pr, __PACKAGE__;
 
-say "+++   self: ",Dumper $me;
-say "+++   peer: ",Dumper $pr;
+say "\nInitial State:";
+printf $form0
+   ,$me->{state}->[0]
+   ,$me->{state}->[1]
+   ,$pr->{state}->[0]
+   ,$pr->{state}->[1]
+   ,$me->{state}->[1] - $pr->{state}->[1];
 
 
 simulate ($me, $pr, 30);
+
+say "\nInitial State was:";
+printf $form0
+   ,$me->{state}->[0]
+   ,$me->{state}->[1]
+   ,$pr->{state}->[0]
+   ,$pr->{state}->[1]
+   ,$me->{state}->[1] - $pr->{state}->[1];
 
 sub simulate {
     my $self = shift;
     my $peer = shift;
     my $iterations = shift;
-    my $plans = [''];
-    my $forml =
-        "%-20s  self: %2.1f  %.1f  peer: %.1f  %.1f  delta: %+.1f  prob: %7.f ppm\n";
-    my $forms =
-        "%-20s  self: %2.1f  %.1f  peer: %.1f  %.1f  expd: %+.3f\n";
-
-    for (1..$iterations) {
-        $plans = iterate($plans);
-    }
-    say "Simulating ", scalar @$plans, " plans";
 
     my @simulations;
 
     say "\nDeltas and Probabilities:";
-    say "    will not be printed out now" if scalar @$plans > 10000;
-    foreach my $plan (@$plans){
+    my @plans = qw/R/;
+    push @plans, qw/S/ if $self->{state}->[1] > $self->{state}->[0];
+    while (@plans) {
         my $self_sim = {state => [ @{$self->{state}} ]};
         my $peer_sim = {state => [ @{$peer->{state}} ]};
         bless $self_sim, __PACKAGE__;
@@ -51,15 +62,18 @@ sub simulate {
         my $prob = 1;
         my $act_cnt = 0;
         my $play = '';
+
+        my $plan = shift @plans;
         foreach my $action (split //, $plan) {
             $play .= $action;
 
             ##  set probability within plan
             $act_cnt++;
             given ($action) {
-                when ([qw/R/])     { $prob *= ($act_cnt == 1) ? 1 : 5/6; }
-                when ([qw/r S s/]) { $prob *= 5/6; }
-                when ([qw/X x/])   { $prob *= 1/6; }
+                ##  when ([qw/R S/]) { $prob *= ($act_cnt == 1) ? 1 : 5/6; }
+                when ([qw/R S/]) { $prob *= 5/6; }
+                when ([qw/r s/]) { $prob *= 5/6; }
+                when ([qw/X x/]) { $prob *= 1/6; }
             }
 
             ##  calculate points within plan
@@ -86,25 +100,41 @@ sub simulate {
                 }
                 default    { die "contains invalid letter: '$_'" }
             }
-            last if $self_sim->{state}->[1] >= 50 or $peer_sim->{state}->[1] >= 50
         }
-        my $delta = $self_sim->{state}->[1] - $peer_sim->{state}->[1];
-        push @simulations
-           , [$play
-             ,$self_sim->{state}->[0]
-             ,$self_sim->{state}->[1]
-             ,$peer_sim->{state}->[0]
-             ,$peer_sim->{state}->[1]
-             ,$delta * $prob];
-        printf $forml
-           ,$play
-           ,$self_sim->{state}->[0]
-           ,$self_sim->{state}->[1]
-           ,$peer_sim->{state}->[0]
-           ,$peer_sim->{state}->[1]
-           ,$delta
-           ,$prob * 1000000
-            unless scalar @$plans > 10000;
+        if (    $self_sim->{state}->[1] < 50
+            and $peer_sim->{state}->[1] < 50
+            and length $plan < $iterations
+            and substr ($plan, -1) ne 'X') {
+            push @plans, iterate([$plan]);
+        }
+        else {
+            my $delta = ($self_sim->{state}->[1] > 50 ? 50 : $self_sim->{state}->[1])
+                      - ($peer_sim->{state}->[1] > 50 ? 50 : $peer_sim->{state}->[1]);
+            my $result = 'U';
+            given (1){
+                when ($self_sim->{state}->[1] >= 50) { $result = 'W' }
+                when ($peer_sim->{state}->[1] >= 50) { $result = 'L' }
+            }
+            push @simulations
+               , [$play
+                 ,$result
+                 ,$self_sim->{state}->[0]
+                 ,$self_sim->{state}->[1]
+                 ,$peer_sim->{state}->[0]
+                 ,$peer_sim->{state}->[1]
+                 ,$delta
+                 ,$delta * $prob
+                 ,$prob * 1000000];
+            printf $forml
+               ,$play
+               ,$result
+               ,$self_sim->{state}->[0]
+               ,$self_sim->{state}->[1]
+               ,$peer_sim->{state}->[0]
+               ,$peer_sim->{state}->[1]
+               ,$delta
+               ,$prob * 1000000;
+        }
 
 ### say "+++   simulation with self: ",Dumper $self_sim;
 ### say "+++   simulation with peer: ",Dumper $peer_sim;
@@ -112,9 +142,34 @@ sub simulate {
 
     say "\nExpected Deltas:";
     my $sim = 0;
-    foreach my $s (sort {$a->[5] <=> $b->[5]} @simulations) {
+    foreach my $s (sort {
+        ##  $a->[1] cmp $b->[1] ||
+        $a->[7] <=> $b->[7]
+    } @simulations) {
         $sim++;
-        printf $forms, @$s if scalar @$plans - $sim < 100;
+        my @print = @$s[0,1,2,3,4,5,7];
+        printf $forms, @print if scalar @simulations - $sim < 20;
+    }
+
+    say "\nExpected Winning Probabilities:";
+    $sim = 0;
+    foreach my $s (sort {
+        $a->[1] cmp $b->[1] ||
+        $a->[8] <=> $b->[8]
+    } @simulations) {
+        $sim++;
+        my @print = @$s[0,1,2,3,4,5,6,8];
+        printf $forml, @print if scalar @simulations - $sim < 20;
+    }
+
+    say "\nExpected Overall Probabilities:";
+    $sim = 0;
+    foreach my $s (sort {
+        $a->[8] <=> $b->[8]
+    } @simulations) {
+        $sim++;
+        my @print = @$s[0,1,2,3,4,5,6,8];
+        printf $forml, @print if scalar @simulations - $sim < 20;
     }
 }
 
@@ -206,7 +261,6 @@ sub _bust {
 }
 
 __END__
-
 
 $plans = ['R'];
 while (@$plans) {
