@@ -16,15 +16,14 @@ function do_usage
 }
 
 CMD="./dicebot"
-#CMD="./dicebot.pl"
 #CMD="echo SIM_MODE"
 WINS=0
 LOST=0
 ERR=0
 GAMES_LEFT=0
 MAX_GAMES=1
-ID="julius"
-STRATEGY="Primitive"
+ID="Julius17"
+STRATEGY="Px,limit,17"
 DEBUG=0
 
 while [ "$1" != "" ]; do

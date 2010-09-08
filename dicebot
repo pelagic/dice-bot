@@ -37,7 +37,7 @@ my $strategy = 'Px,limit,15';
 
 my ($p_help, $p_version);
 my $DEBUG = 0;
-my $TRACE = 1;
+my $TRACE = 0;
 
 GetOptions
 ('id=s'        => \$my_id
@@ -78,9 +78,9 @@ my $starter;
 
 #-------------------------------------------------------------------------------
 
-#my $dest_server = "localhost";
-my $dest_server = "wettbewerb.linux-magazin.de";
-my $dest_port = 3333;
+my $dest_server   = 'wettbewerb.linux-magazin.de';
+my $dest_port     = 3333;
+my $dest_protocol = 'tcp';
 my $b_line;
 my $n_recv;
 my $b_recv;
@@ -93,7 +93,7 @@ my $cont = 1;
 my $sock = new IO::Socket::INET(
     PeerAddr => $dest_server,
     PeerPort => $dest_port,
-    Proto => 'tcp'
+    Proto    => $dest_protocol,
 ) or die "ERROR: could not connect to server $dest_server:$dest_port: $!";
 
 $sock->autoflush(1);
@@ -124,7 +124,6 @@ while($cont) {
    }
    
    $b_line .= $b_recv;
-    print "DEBUG: recv() rc=$n_recv text=$b_recv line=$b_line\n" if $DEBUG;
 
    if (!$line_complete) {
       $ii++;  

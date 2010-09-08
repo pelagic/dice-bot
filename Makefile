@@ -1,2 +1,3 @@
+all:
 game:
-	./dicebot.pl
+	./game.sh
