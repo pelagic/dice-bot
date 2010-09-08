@@ -1,0 +1,274 @@
+#!/usr/bin/perl 
+
+use strict;
+use warnings FATAL => 'all';
+use Getopt::Long;
+use IO::Socket;
+use Data::Dumper;$Data::Dumper::Indent = 1;$Data::Dumper::Useqq = 1;
+{
+    no warnings 'redefine';
+    sub Data::Dumper::qquote {
+        my $s = shift;
+        return "'$s'";
+    }
+}
+
+use Alea;
+
+our $VERSION = '1.003';
+$0 =~ m|^ ( (?: .* / (?: \.\.?\Z(?!\n) )? )? ) ([^/]*) |xs;
+my $path    = $1;
+my $program = $2;
+
+my $sep = '~' x 80 . "\n";
+my $version = qq/$sep
+This is $program, version $VERSION
+
+$sep/;
+my $usage = qq/
+$sep
+Help not implemented yet
+
+$sep/;
+
+my $my_id    = 'Julius';
+my $strategy = 'Px,limit,15';
+
+
+my ($p_help, $p_version);
+my $DEBUG = 0;
+my $TRACE = 0;
+
+GetOptions
+('id=s'        => \$my_id
+,'strategy=s'  => \$strategy
+,'debug'       => \$DEBUG
+,'trace'       => \$TRACE
+,'help'        => \$p_help
+,'version'     => \$p_version
+) or die "Illegal option entered.";
+
+if ($p_help) {
+    print $usage;
+    exit 1;
+}
+if ($p_version) {
+    print $version;
+    exit 1;
+}
+
+my @strategy_parms;
+($strategy, @strategy_parms) = split /,/, $strategy;
+print "DEBUG parameter parsing: ", Dumper \$strategy, \@strategy_parms if $DEBUG;
+
+print "TRACE playing as '$my_id' using '$strategy' with arguments '@strategy_parms'\n" if $TRACE;
+
+my $D = Alea->new($strategy, @strategy_parms);
+print "DEBUG Alea Object: ", Dumper \$D if $DEBUG;
+
+
+
+my $my_turn = 0;
+my $my_total = 0;
+my $peer_total = 0;
+my $prog_exit = 2;
+my $saved = 0;
+
+my $starter;
+
+#-------------------------------------------------------------------------------
+
+my $dest_server   = 'wettbewerb.linux-magazin.de';
+my $dest_port     = 3333;
+my $dest_protocol = 'tcp';
+my $b_line;
+my $n_recv;
+my $b_recv;
+my $ii = 0;
+my $line_complete;
+my $cont = 1;
+
+
+
+my $sock = new IO::Socket::INET(
+    PeerAddr => $dest_server,
+    PeerPort => $dest_port,
+    Proto    => $dest_protocol,
+) or die "ERROR: could not connect to server $dest_server:$dest_port: $!";
+
+$sock->autoflush(1);
+
+while($cont) {
+
+   $n_recv = sysread $sock, $b_recv, 2048;
+   
+   ## the peer closed the connection
+   ##
+   if ($n_recv == 0) {
+      print "ERROR: peer disconnected\n";
+      last;
+   }
+   if ($n_recv < 0) {
+      print "ERROR: on peer connection read\n";
+      last;
+   }   
+   
+   ## check that we have read a newline
+   ##
+   if (chomp($b_recv) == 0) {
+      $line_complete = 0;
+   }
+   else {
+      ## we had a NL in the buffer
+      $line_complete = 1;
+   }
+   
+   $b_line .= $b_recv;
+
+   if (!$line_complete) {
+      $ii++;  
+      next;   
+   }
+     
+   ## process multiple received lines
+   ##
+   my @input = split(/\n/, $b_line);
+   my $input;
+   foreach $input (@input) {
+        print "DEBUG: got new line to process: $input\n" if $DEBUG;
+   
+      $cont = process_line($input, $sock);
+   
+        print "DEBUG: process_line() rc=$cont ii=$ii\n" if $DEBUG;
+      if (!$cont) {
+         last;
+      }
+   }   
+
+   undef $b_line;
+   $ii++;
+   
+   if (!$cont) {
+      last;
+   }   
+}
+
+close $sock;
+
+exit $prog_exit;
+
+#-------------------------------------------------------------------------------
+
+sub get_numbers {
+    my ($line) = @_;
+##  THRW 4 hat Spieler 2 (leinad-17) gewuerfelt
+##  THRW 2 hat Spieler 1 (downa13e) gewuerfelt
+    my ($throw, $order, $player)
+        = $line =~ m/^THRW (\d) hat Spieler (\d) [(]([^)]+)[)] gewuerfelt/;
+    return ($throw, $order, $player) if $throw;
+
+    my @tokens = split(/ /, $line, 4);
+    shift @tokens;
+    return @tokens;
+}
+
+sub send_auth {
+   my ($sock) = @_;
+   my $buf = "AUTH $my_id\n";
+   $sock->send($buf);
+}
+
+sub send_roll {
+   my ($sock) = @_;
+   my $buf = "ROLL\n";
+   $sock->send($buf);
+}
+
+sub send_save {
+   my ($sock) = @_;
+   my $buf = "SAVE\n";
+   $saved = $my_total;
+   $sock->send($buf);
+}
+
+sub process_line {
+    my ($line, $sock) = @_;
+    my $continue = 1;
+    my $n_mine;
+    my $n_his;
+   
+    print "DEBUG: process_line() called with line=$line\n" if $DEBUG;
+   
+   if ($line =~ /^HELO/) {
+      send_auth($sock);
+   }
+   elsif ($line =~ /^DENY/) {
+      print "ERROR: server sent DENY\n";
+      $continue = 0;
+   }
+   elsif ($line =~ /^TURN/) {
+      $my_turn = 1;
+      ($my_total, $peer_total) = get_numbers($line);
+      print "TRACE: my_total=$my_total\n" if $TRACE;
+      my $decision = $D->decide($saved, $my_total, $peer_total);
+      if ($decision eq 'SAVE') {
+         print "TRACE: send SAVE\n" if $TRACE;
+         send_save($sock);
+      }
+      elsif ($decision eq 'ROLL') {
+         send_roll($sock);
+      }
+   }
+   elsif ($line =~ /^DEF/) {
+      ($n_mine, $n_his) = get_numbers($line);
+      print "$line\n";
+      warn "$my_id $starter $line\n";
+      undef $starter;
+      print "shit, we lost: your $n_mine peer $n_his\n";
+      $continue = 0;
+      $prog_exit = 1;
+   }
+   elsif ($line =~ /^WIN/) {
+      ($n_mine, $n_his) = get_numbers($line);
+      print "$line\n";
+      warn "$my_id $starter $line\n";
+      undef $starter;
+      print "success, we did it again: your $n_mine peer $n_his\n";
+      $continue = 0;
+      $prog_exit = 0;
+   }
+    elsif ($line =~ /^THRW/) {
+        warn "$my_id $line\n";
+        my ($number, $order, $player) = get_numbers($line);
+        if (not defined $starter) {
+            if (($order == 1 && $player eq $my_id)
+             or ($order == 2 && $player ne $my_id)) {
+                $starter = 'me';
+                print "TRACE: Starter is me\n" if $TRACE;
+            }
+            else {
+                $starter = 'peer';
+                print "TRACE: Starter is peer\n" if $TRACE;
+            }
+        }
+        if ($my_turn) {
+            $my_total += $number;
+            $my_total = $saved if $number == 6;
+            print "my thrw $number new total $my_total\n";
+        }
+        else {
+            $peer_total += $number;
+            print "peer thrw $number new total $peer_total\n";
+        }
+        $my_turn = 0;
+    }
+    else {
+        print "ERROR: unknown command received: $line\n";
+        $continue = 0;
+    }
+   
+    return $continue;
+}
+
+#-------------------------------------------------------------------------------
+__END__
