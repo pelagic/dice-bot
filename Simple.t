@@ -18,8 +18,8 @@ my $forms =
     "%-20s  %1s  self: %2d  %2d  peer: %2d  %2d  xpdelta: %+.3f\n";
 
 ## state => [saved, total]
-my $me = {state => [25, 48]};
-my $pr = {state => [25, 25]};
+my $me = {state => [45, 49]};
+my $pr = {state => [0, 0]};
 
 bless $me, __PACKAGE__;
 bless $pr, __PACKAGE__;
@@ -33,7 +33,7 @@ printf $form0
    ,$me->{state}->[1] - $pr->{state}->[1];
 
 
-simulate ($me, $pr, 30);
+simulate ($me, $pr, 60);
 
 say "\nInitial State was:";
 printf $form0
@@ -70,8 +70,8 @@ sub simulate {
             ##  set probability within plan
             $act_cnt++;
             given ($action) {
-                ##  when ([qw/R S/]) { $prob *= ($act_cnt == 1) ? 1 : 5/6; }
-                when ([qw/R S/]) { $prob *= 5/6; }
+                when ([qw/R S/]) { $prob *= ($act_cnt == 1) ? 1 : 5/6; }
+                ##  when ([qw/R S/]) { $prob *= 5/6; }
                 when ([qw/r s/]) { $prob *= 5/6; }
                 when ([qw/X x/]) { $prob *= 1/6; }
             }
@@ -104,7 +104,8 @@ sub simulate {
         if (    $self_sim->{state}->[1] < 50
             and $peer_sim->{state}->[1] < 50
             and length $plan < $iterations
-            and substr ($plan, -1) ne 'X') {
+            and substr ($plan, -1) ne 'X'
+            and substr ($plan, -1) ne 's') {
             push @plans, iterate([$plan]);
         }
         else {
@@ -115,6 +116,7 @@ sub simulate {
                 when ($self_sim->{state}->[1] >= 50) { $result = 'W' }
                 when ($peer_sim->{state}->[1] >= 50) { $result = 'L' }
             }
+            $prob = 5/6 if $prob == 1;
             push @simulations
                , [$play
                  ,$result
@@ -148,7 +150,7 @@ sub simulate {
     } @simulations) {
         $sim++;
         my @print = @$s[0,1,2,3,4,5,7];
-        printf $forms, @print if scalar @simulations - $sim < 20;
+        printf $forms, @print if scalar @simulations - $sim < 15;
     }
 
     say "\nExpected Winning Probabilities:";
@@ -159,7 +161,7 @@ sub simulate {
     } @simulations) {
         $sim++;
         my @print = @$s[0,1,2,3,4,5,6,8];
-        printf $forml, @print if scalar @simulations - $sim < 20;
+        printf $forml, @print if scalar @simulations - $sim < 15;
     }
 
     say "\nExpected Overall Probabilities:";
@@ -169,8 +171,20 @@ sub simulate {
     } @simulations) {
         $sim++;
         my @print = @$s[0,1,2,3,4,5,6,8];
-        printf $forml, @print if scalar @simulations - $sim < 20;
+        printf $forml, @print if scalar @simulations - $sim < 15;
     }
+
+    say "\nDescending Delta & Probability:";
+    $sim = 0;
+    foreach my $s (sort {
+        $a->[6] <=> $b->[6] ||
+        $a->[8] <=> $b->[8]
+    } @simulations) {
+        $sim++;
+        my @print = @$s[0,1,2,3,4,5,6,8];
+        printf $forml, @print if scalar @simulations - $sim < 15;
+    }
+
 }
 
 sub iterate {
@@ -184,7 +198,6 @@ sub iterate {
     my $context = (wantarray() ? LIST : SCALAR);
 
     my $follower = {
-        '' => [qw/R/],
         R => [qw/R S x/],
         S => [qw/r/],
         r => [qw/r X/],
